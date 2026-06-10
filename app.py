@@ -68,8 +68,6 @@ st.markdown("""
     
     div[data-testid="stForm"] { border: 1px solid #E2E8F0; border-radius: 8px; padding: 20px; background-color: #FFFFFF; }
     .stButton>button { border-radius: 4px !important; font-size: 14px !important; padding: 8px 16px !important; font-weight: 600 !important; }
-    
-    .logout-btn { text-align: right; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -78,7 +76,6 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 def check_login(username, password):
-    # Streamlit Secrets থেকে ইউজারনেম ও পাসওয়ার্ড রিড করা
     correct_username = st.secrets.get("PORTAL_USERNAME", "admin")
     correct_password = st.secrets.get("PORTAL_PASSWORD", "npi1234")
     
@@ -100,7 +97,7 @@ if not st.session_state.logged_in:
         if submit_login:
             check_login(user_input, pass_input)
     st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # লগইন না করা পর্যন্ত নিচের বাকি কোড রান হওয়া বন্ধ থাকবে
+    st.stop()
 
 # 🚪 লগআউট বাটন (লগইন থাকার পর স্ক্রিনের উপরে দেখাবে)
 l_col1, l_col2 = st.columns([8, 1])
@@ -109,7 +106,7 @@ with l_col2:
         st.session_state.logged_in = False
         st.rerun()
 
-# ৩. লগো এবং টাইটেল সেকশন (লগইন সফল হলে এটি লোড হবে)
+# ৩. লগো এবং টাইটেল সেকশন
 logo_name = "NPI Logo.png"
 if os.path.exists(logo_name):
     img_col, txt_col = st.columns([1, 8])
@@ -131,7 +128,7 @@ if os.path.exists(file_name):
     df['তারিখ'] = df['তারিখ'].ffill().astype(str).str.strip()
     df['সময়'] = df['সময়'].ffill().astype(str).str.strip()
     df['বিষয় কোড'] = df['বিষয় কোড'].ffill()
-    df['विषয়ের নাম'] = df['विषয়ের নাম'].ffill()
+    df['বিষয়ের নাম'] = df['বিষয়ের নাম'].ffill()  # 🌟 বাংলা বানান ফিক্সড
     df['পর্ব'] = df['পর্ব'].ffill()
 
     f_col1, f_col2 = st.columns(2)
@@ -150,7 +147,7 @@ if os.path.exists(file_name):
         tech = row['টেকনোলজি']
         if pd.isna(tech) or 'সর্বমোট' in str(tech):
             continue
-        subject = row['विषয়ের নাম']
+        subject = row['বিষয়ের নাম']  # 🌟 বাংলা বানান ফিক্সড
         sub_code = str(row['বিষয় কোড']).split('.')[0]
         semester = row['পর্ব']
         
@@ -174,7 +171,7 @@ if os.path.exists(file_name):
         if "draft_storage" not in st.session_state:
             st.session_state.draft_storage = {}
 
-        # Supabase থেকে ডাটা রিড করার লজিক
+        # Supabase ক্লাউড ডাটাবেস থেকে পূর্বের সেভ করা ভ্যালু রিকভারি লজিক
         saved_db_df = None
         try:
             response = supabase.table("attendance_database").select("*").eq("তারিখ", selected_date).eq("সময়", selected_time).execute()
@@ -232,21 +229,21 @@ if os.path.exists(file_name):
                 for data in final_submission_list:
                     k = f"key_{data['তারিখ']}_{data['সময়']}_{data['কক্ষ নম্বর']}_{data['টেকনোলজি']}"
                     st.session_state.draft_storage[k] = data['উপস্থিত']
-                st.info("বর্তমান এন্ট্রিগুলো সাময়িকভাবে সেশন মেমোরিতে সংরক্ষণ করা হয়েছে।")
+                st.info("বর্তমান এন্ট্রিগুলো সাময়িকভাবে পরীক্ষা নিয়ন্ত্রণ কক্ষের মেমোরিতে সংরক্ষণ করা হয়েছে।")
                 
             if final_btn:
                 try:
                     # পুরোনো ডুপ্লিকেট ডাটা ডিলিট করা
                     supabase.table("attendance_database").delete().eq("তারিখ", selected_date).eq("সময়", selected_time).execute()
                     
-                    # নতুন ডাটা ক্লাউডে পুশ করা
+                    # নতুন ডাটা ক্লাউড সুপাবেসে পুশ করা
                     supabase.table("attendance_database").insert(final_submission_list).execute()
                     st.success("✅ এই টাইম স্লটের তথ্য সফলভাবে ক্লাউড ডাটাবেসে সেভ করা হয়েছে!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"ডাটাবেসে সেভ করতে সমস্যা হয়েছে: {e}")
 
-        # ৬. মাস্টার ডাউনলোড প্যানেল
+        # ৪. লাইভ স্ট্যাটিস্টিকস ও প্রফেশনাল রিপোর্ট
         st.write("---")
         st.subheader("লাইভ স্ট্যাটিস্টিকস ও প্রফেশনাল রিপোর্ট")
         
@@ -271,14 +268,15 @@ if os.path.exists(file_name):
                 mime="text/csv"
             )
             
-        # ৭. মাস্টার ডাটাবেস ডাউনলোড (Supabase ক্লাউড থেকে সব ডাটা একসাথে নামানোর জন্য)
+        # ৫. মাস্টার ডাটাবেস ডাউনলোড (Supabase ক্লাউড থেকে সব ডাটা একসাথে নামানোর জন্য)
         try:
             full_response = supabase.table("attendance_database").select("*").execute()
             if full_response.data:
                 st.write("---")
-                st.subheader("📥 মাস্টার আর্কাইভ (ক্লাউড ডাটাবেস)")
+                st.subheader("📥 মাস্টার আর্কাইভ (সর্বমোট এন্ট্রি করা সকল পরীক্ষার ডাটাবেস)")
                 full_db_df = pd.DataFrame(full_response.data)
-                if 'id' in full_db_df.columns: full_db_df.drop(columns=['id', 'created_at'], errors='ignore', inplace=True)
+                if 'id' in full_db_df.columns: 
+                    full_db_df.drop(columns=['id', 'created_at'], errors='ignore', inplace=True)
                 
                 full_csv = full_db_df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
